@@ -1,6 +1,7 @@
 {
   "name": "laboratorna6",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -22,6 +23,7 @@
   "dependencies": {
     "body-parser": "^2.2.1",
     "commander": "^14.0.2",
+    "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "multer": "^2.0.2",
     "superagent": "^10.2.3",

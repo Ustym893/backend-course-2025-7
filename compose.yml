@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"     # Доступ до сайту
+      - "9229:9229"     # Порт для відлагодження (node --inspect)
+    volumes:
+      - .:/app         # Монтуємо папку проекту всередину (щоб працював nodemon) 
+      - /app/node_modules # Не перезаписуємо node_modules локальними
+    env_file:
+      - .env            # Читаємо налаштування з файлу
+    depends_on:
+      - mysql_db
+    # Запуск через nodemon з флагом inspect для відлагодження [cite: 93, 96]
+    command: nodemon --inspect=0.0.0.0:9229 index.js
+
+  mysql_db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: inventory_db
+    ports:
+      - "3307:3306"
+    volumes:
+      # Скріпт ініціалізації БД (створіть папку db_init і покладіть туди .sql файл) 
+      - ./db_init:/docker-entrypoint-initdb.d 
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:

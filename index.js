@@ -1,5 +1,4 @@
-// index.js
-
+import 'dotenv/config';
 import { Command } from 'commander';
 import express from 'express';
 import multer from 'multer';
@@ -7,26 +6,25 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express'; 
 import swaggerJsdoc from 'swagger-jsdoc';
-
-// --- COMMANDER CONFIG ---
+console.log("TEST RELOAD WORKS");
 const program = new Command();
-
 program
-    .requiredOption('-h, --host <address>', 'Адреса сервера (обов\'язковий)')
-    .requiredOption('-p, --port <number>', 'Порт сервера (обов\'язковий)', parseInt)
-    .requiredOption('-c, --cache <path>', 'Шлях до директорії кешованих файлів (обов\'язковий)')
+    .option('-h, --host <address>', 'Адреса сервера')
+    .option('-p, --port <number>', 'Порт сервера')
+    .option('-c, --cache <path>', 'Шлях до директорії кешованих файлів')
     .allowUnknownOption();
 
 program.parse(process.argv);
+const opts = program.opts();
 
-let { host, port, cache } = program.opts();
-cache = path.resolve(cache);
+const host = process.env.HOST || opts.host || '0.0.0.0';
+const port = parseInt(process.env.PORT || opts.port || '3000');
+const cacheDirInput = process.env.CACHE_DIR || opts.cache || './cache';
+const cache = path.resolve(cacheDirInput);
 
-// --- DATA STORE ---
 let inventoryItems = {};
 let nextId = 1;
 
-// --- INIT CACHE DIR ---
 async function initializeCache(dirPath) {
     try {
         await fs.access(dirPath);
@@ -40,7 +38,6 @@ async function initializeCache(dirPath) {
     }
 }
 
-// --- MULTER STORAGE ---
 const uploadStorage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, cache),
     filename: (req, file, cb) =>
@@ -48,7 +45,6 @@ const uploadStorage = multer.diskStorage({
 });
 const upload = multer({ storage: uploadStorage });
 
-// --- HELPERS ---
 const prepareItemResponse = item => ({
     ID: item.ID,
     InventoryName: item.InventoryName,
@@ -65,14 +61,9 @@ const findItem = (id, res) => {
     return item;
 };
 
-// --- EXPRESS APP ---
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// ---------------------------------------------------
-// SWAGGER CONFIG
-// ---------------------------------------------------
 
 const swaggerOptions = {
     definition: {
@@ -89,10 +80,7 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-
-// ---------------------------------------------------
-// 1. СХЕМИ ТА ТЕГИ
-// ---------------------------------------------------
+// --- SWAGGER DEFINITIONS ---
 
 /**
  * @swagger
@@ -120,10 +108,7 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
  *     description: "HTML форми"
  */
 
-
-// ---------------------------------------------------
-// 2. REGISTER (POST)
-// ---------------------------------------------------
+// --- ROUTES ---
 
 /**
  * @swagger
@@ -176,11 +161,6 @@ app.post('/register', upload.single('photo'), (req, res) => {
     });
 });
 
-
-// ---------------------------------------------------
-// 3. GET /inventory
-// ---------------------------------------------------
-
 /**
  * @swagger
  * /inventory:
@@ -202,11 +182,6 @@ app.get('/inventory', (req, res) => {
     res.status(200).json(list);
 });
 
-
-// ---------------------------------------------------
-// 4. GET /inventory/{id}
-// ---------------------------------------------------
-
 /**
  * @swagger
  * /inventory/{id}:
@@ -214,12 +189,12 @@ app.get('/inventory', (req, res) => {
  *     tags: [Inventory]
  *     summary: "Отримання інформації про конкретну річ"
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Унікальний ідентифікатор інвентаризованої речі"
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema:
+ *         type: integer
+ *       description: "Унікальний ідентифікатор інвентаризованої речі"
  *     responses:
  *       200:
  *         description: "Успішне повернення інформації"
@@ -236,11 +211,6 @@ app.get('/inventory/:id', (req, res) => {
     res.status(200).json(prepareItemResponse(item));
 });
 
-
-// ---------------------------------------------------
-// 5. PUT /inventory/{id}
-// ---------------------------------------------------
-
 /**
  * @swagger
  * /inventory/{id}:
@@ -248,12 +218,12 @@ app.get('/inventory/:id', (req, res) => {
  *     tags: [Inventory]
  *     summary: "Оновлення імені або опису"
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Унікальний ідентифікатор інвентаризованої речі"
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema:
+ *         type: integer
+ *       description: "Унікальний ідентифікатор інвентаризованої речі"
  *     requestBody:
  *       content:
  *         application/json:
@@ -282,11 +252,6 @@ app.put('/inventory/:id', (req, res) => {
     res.status(200).json(prepareItemResponse(item));
 });
 
-
-// ---------------------------------------------------
-// 6. DELETE /inventory/{id}
-// ---------------------------------------------------
-
 /**
  * @swagger
  * /inventory/{id}:
@@ -294,12 +259,12 @@ app.put('/inventory/:id', (req, res) => {
  *     tags: [Inventory]
  *     summary: "Видалення інвентаризованої речі"
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Унікальний ідентифікатор інвентаризованої речі"
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema:
+ *         type: integer
+ *       description: "Унікальний ідентифікатор інвентаризованої речі"
  *     responses:
  *       200:
  *         description: "Успішно видалено"
@@ -318,11 +283,6 @@ app.delete('/inventory/:id', async (req, res) => {
     res.status(200).json({ message: `Річ з ID ${item.ID} успішно видалена` });
 });
 
-
-// ---------------------------------------------------
-// 7. GET /inventory/{id}/photo
-// ---------------------------------------------------
-
 /**
  * @swagger
  * /inventory/{id}/photo:
@@ -330,12 +290,12 @@ app.delete('/inventory/:id', async (req, res) => {
  *     tags: [Inventory]
  *     summary: "Отримання фото зображення"
  *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: integer
- *         required: true
- *         description: "ID речі"
+ *     - in: path
+ *       name: id
+ *       schema:
+ *         type: integer
+ *       required: true
+ *       description: "ID речі"
  *     responses:
  *       200:
  *         description: "Зображення повернено у форматі image/jpeg"
@@ -364,11 +324,6 @@ app.get('/inventory/:id/photo', (req, res) => {
     });
 });
 
-
-// ---------------------------------------------------
-// 8. PUT /inventory/{id}/photo
-// ---------------------------------------------------
-
 /**
  * @swagger
  * /inventory/{id}/photo:
@@ -376,12 +331,12 @@ app.get('/inventory/:id/photo', (req, res) => {
  *     tags: [Inventory]
  *     summary: "Оновлення фото зображення"
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "ID речі"
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema:
+ *         type: integer
+ *       description: "ID речі"
  *     requestBody:
  *       content:
  *         multipart/form-data:
@@ -419,11 +374,6 @@ app.put('/inventory/:id/photo', upload.single('photo'), async (req, res) => {
     });
 });
 
-
-// ---------------------------------------------------
-// 9. ФОРМИ HTML
-// ---------------------------------------------------
-
 /**
  * @swagger
  * /RegisterForm.html:
@@ -451,11 +401,6 @@ app.get('/RegisterForm.html', (req, res) => {
 app.get('/SearchForm.html', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'SearchForm.html'));
 });
-
-
-// ---------------------------------------------------
-// 10. POST /search
-// ---------------------------------------------------
 
 /**
  * @swagger
@@ -503,11 +448,6 @@ app.post('/search', (req, res) => {
     res.status(200).json(responseItem);
 });
 
-
-// ---------------------------------------------------
-// 11. ERROR HANDLERS
-// ---------------------------------------------------
-
 app.use((req, res, next) => {
     const allowed = ['GET', 'POST', 'PUT', 'DELETE'];
     if (!allowed.includes(req.method)) {
@@ -520,20 +460,19 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });
 });
 
-
-// ---------------------------------------------------
-// 12. START SERVER
-// ---------------------------------------------------
-
 async function startServer() {
     try {
         await initializeCache(cache);
 
         app.listen(port, host, () => {
             console.log('--- СЕРВЕР ЗАПУЩЕНО ---');
-            console.log(`http://${host}:${port}`);
-            console.log(`Swagger UI: http://${host}:${port}/docs`);
-            console.log(`Кеш: ${cache}`);
+            console.log(`Address: http://${host}:${port}`);
+            console.log(`Swagger: http://${host}:${port}/docs`);
+            console.log(`Cache:   ${cache}`);
+            
+            if (process.env.DB_HOST) {
+               console.log(`DB Host: ${process.env.DB_HOST}`);
+            }
             console.log('------------------------');
         });
     } catch (e) {
